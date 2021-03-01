@@ -36,13 +36,16 @@ class MonitorGan(callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         self.generator.save("g_model_animeGAN_GP.h5")
         self.critic.save("c_model_animeGAN_GP.h5")
+        with open('logs.txt','a') as f:
+            f.write(logs)
+            f.close()
         latent_vector = tf.random.normal(
             shape=(self.sample_img, self.latent_dim))
         generated_images = self.generator(latent_vector)
         # normalize the image having -1 to 1 to 0 to 1
         generated_images = (generated_images+1.0)/2.0
-        for i in range(9):
-            plt.subplot(3, 3, i+1)
+        for i in range(16):
+            plt.subplot(4, 4, i+1)
             plt.axis('off')
             plt.imshow(generated_images[i])
         filename = f"{self.result_dir}genrated_at_epoch_00{epoch+1}.png"
@@ -151,7 +154,7 @@ def train(
         g_loss_fn=generator_loss
     )
 
-    #wgan_gp.fit(image_dataset, batch_size=batch_size, epochs=epoch, callbacks=[clbk])
+    #history = wgan_gp.fit(image_dataset, batch_size=batch_size, epochs=epoch, callbacks=[clbk])
 
 
 if __name__ == "__main__":
