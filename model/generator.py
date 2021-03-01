@@ -89,7 +89,7 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     x = LeakyReLU(0.2)(x)
     x = Reshape((h_output, w_output, f[1]*filters))(x)
 
-    for i in range(1,int(np.math.log2(filters))):
+    for i in range(int(np.math.log2(filters))):
         x = upsample_res_block(
             x,
             filters=f[i]*filters,

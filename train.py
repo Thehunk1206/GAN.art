@@ -62,10 +62,10 @@ def train(
     image_c: int = 3,
     latent_dim: int = 256,
     epoch: int = 150,
-    LR=0.0001,
+    LR=0.0002,
     beta_1: float = 0.1,
     beta_2: float = 0.9,
-    n_critic: int = 1,
+    n_critic: int = 5,
     gp_weight=10,
 
 ):
