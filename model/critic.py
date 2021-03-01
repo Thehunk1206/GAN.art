@@ -58,6 +58,7 @@ def build_critic(input_shape: tuple = (128, 128, 3)):
     if input_shape[0] != input_shape[1]:
         raise "Image must be of square shape"
 
+    #TODO change the divisor dynamically
     filters = input_shape[0]//4
     f = [2**i for i in range(int(np.math.log2(filters)))]
 
@@ -79,6 +80,7 @@ def build_critic_for_nonsquare(input_shape: tuple = (320, 192, 3)):
     if input_shape[0] == input_shape[1]:
         raise "input shape cannot be 1:1"
 
+    #TODO change the divisor dynamically
     filters = input_shape[0]//80
 
     f = [input_shape[0]//2**x for x in range(1,int(np.math.log2(input_shape[0]//5)))][::-1]
