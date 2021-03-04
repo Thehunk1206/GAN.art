@@ -6,7 +6,6 @@ from tensorflow.keras.models import Model
 from tensorflow.python import keras
 
 
-
 def upsample_block(
         x,
         filters: int,
@@ -20,7 +19,7 @@ def upsample_block(
         use_dropout: bool = False,
         drop_value: float = 0.3
 ):
-    x = UpSampling2D(size=upsample_size, interpolation = 'bilinear')(x)
+    x = UpSampling2D(size=upsample_size, interpolation='bilinear')(x)
     x = Conv2D(filters, kernel_size, strides=strides,
                padding=padding, use_bias=use_bias)(x)
     if use_bn:
@@ -48,25 +47,30 @@ def upsample_res_block(
 ):
     x_up = UpSampling2D(size=upsample_size, interpolation='bilinear')(x)
     merge_layer = x_up
-    x = Conv2D(filters, kernel_size, strides=strides,
+
+    x = Conv2D(filters//2, (1, 1), strides=strides,
                padding=padding, use_bias=use_bias)(x_up)
+
     x = LeakyReLU(alpha=0.2)(x)
 
-    x = Conv2D(filters, kernel_size, strides=strides,
+    x = Conv2D(filters//2, kernel_size, strides=strides,
                padding=padding, use_bias=use_bias)(x)
+    x = LeakyReLU(alpha=0.2)(x)
 
-    if use_bn:
-        x = BatchNormalization()(x)
-    if activation:
-        x = LeakyReLU(alpha=0.2)(x)
-    if use_dropout:
-        x = Dropout(drop_value)(x)
+    x = Conv2D(filters, (1, 1), strides=strides,
+               padding=padding, use_bias=use_bias)(x)
 
     shortcut_x = Conv2D(filters, (1, 1), strides=strides,
                         padding=padding, use_bias=use_bias)(merge_layer)
-    shortcut_x = Activation('linear')(shortcut_x)
 
     layer_out = add([x, shortcut_x])
+
+    if use_bn:
+        layer_out = BatchNormalization()(layer_out)
+    if activation:
+        layer_out = LeakyReLU(alpha=0.2)(layer_out)
+    if use_dropout:
+        layer_out = Dropout(drop_value)(layer_out)
 
     return layer_out
 
@@ -75,7 +79,7 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     if image_size[0] != image_size[1]:
         raise "Image must be of square shape"
 
-    #TODO change the divisor dynamically
+    # TODO change the divisor dynamically
     filters = image_size[0]//4
 
     f = [2**i for i in range(int(np.math.log2(filters)))][::-1]
@@ -89,7 +93,7 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     x = LeakyReLU(0.2)(x)
     x = Reshape((h_output, w_output, f[1]*filters))(x)
 
-    for i in range(int(np.math.log2(filters))):
+    for i in range(1, int(np.math.log2(filters))):
         x = upsample_res_block(
             x,
             filters=f[i]*filters,
@@ -104,17 +108,17 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     return Model(noise, fake_out, name="Generator1")
 
 
-def build_generator_for_nonsquare(latent_dim, image_size=(320, 192)) -> keras.Model:
+def build_generator_for_nonsquare(latent_dim: int, image_size: tuple = (320, 192)) -> keras.Model:
     if image_size[0] == image_size[1]:
         raise "input shape cannot be 1:1"
-    
-    #TODO change this divisor dynamically according to hieght of an image
-    filters = image_size[0]//80
+
+    filters = 4
     h_factor = 5
     w_factor = 3
 
-    f = [image_size[0]//2**x for x in range(1,int(np.math.log2(image_size[0]//h_factor))+1)]
-    
+    f = [image_size[0]//2 **
+         x for x in range(1, int(np.math.log2(image_size[0]//h_factor))+1)]
+
     noise = Input(shape=(latent_dim,), name="gen_noise")
     x = Dense(f[1]*filters*(h_factor*2)*(w_factor*2), use_bias=False)(noise)
     x = LeakyReLU(0.2)(x)

@@ -21,7 +21,7 @@ class MonitorGan(callbacks.Callback):
         self,
         generator: keras.Model,
         critic: keras.Model,
-        sample_img: int = 9,
+        sample_img: int = 16,
         latent_dim: int = 128,
         result_dir: str = 'results/'
 
@@ -56,12 +56,11 @@ class MonitorGan(callbacks.Callback):
 def train(
     pre_trained_c_model_path: str = None,
     pre_trained_g_model_path: str = None,
-    plot_model: bool = False,
     data_dir: str = "dataset/",
     result_dir: str = "results/",
     batch_size: int = 32,
-    image_h: int = 128,
-    image_w: int = 128,
+    image_h: int = 640,
+    image_w: int = 384,
     image_c: int = 3,
     latent_dim: int = 256,
     epoch: int = 150,
@@ -115,6 +114,7 @@ def train(
                 input_shape=(image_h, image_w, image_c)
             )
         else:
+            # build for non square image
             g_model = build_generator_for_nonsquare(
                 latent_dim=latent_dim,
                 image_size=(image_h, image_w)
@@ -129,9 +129,8 @@ def train(
     c_model.summary()
 
     # plot model
-    if plot_model:
-        _ = plot_model(g_model, to_file='generator.png', show_shapes=True)
-        _ = plot_model(c_model, to_file='critic.png', show_shapes=True)
+    plot_model(g_model, to_file='generator.png', show_shapes=True)
+    plot_model(c_model, to_file='critic.png', show_shapes=True)
 
     # instantiate keras callback
     clbk = MonitorGan(
