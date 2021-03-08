@@ -6,12 +6,13 @@ The total loss of WGAN_GP(Wasserstein Generative Adverserial nets Gradient panel
 is given as min max {E[C(x)] - E[C(G(x_fake))] + lambda x E[(||Grad(C(X_interpolated))||2- 1)^2] }
 '''
 
-def critic_loss(real_image,fake_image):
+
+def critic_loss(real_image, fake_image):
     real_loss = tf.reduce_mean(real_image)
     fake_loss = tf.reduce_mean(fake_image)
 
     return fake_loss - real_loss
 
+
 def generator_loss(fake_image):
     return -tf.reduce_mean(fake_image)
-

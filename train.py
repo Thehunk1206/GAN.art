@@ -23,7 +23,8 @@ class MonitorGan(callbacks.Callback):
         critic: keras.Model,
         sample_img: int = 16,
         latent_dim: int = 128,
-        result_dir: str = 'results/'
+        result_dir: str = 'results/',
+        trained_model_dir: str = 'trained_model/'
 
     ):
         super().__init__()
@@ -32,13 +33,15 @@ class MonitorGan(callbacks.Callback):
         self.sample_img = sample_img
         self.latent_dim = latent_dim
         self.result_dir = result_dir
+        self.trained_model_dir = trained_model_dir
+
+        if not os.path.exists(self.trained_model_dir):
+            os.mkdir(self.trained_model_dir)
 
     def on_epoch_end(self, epoch, logs=None):
-        self.generator.save("g_model_animeGAN_GP.h5")
-        self.critic.save("c_model_animeGAN_GP.h5")
-        with open('logs.txt','a') as f:
-            f.write(logs)
-            f.close()
+        self.generator.save(f"{self.trained_model_dir}g_model_animeGAN_GP.h5")
+        self.critic.save(f"{self.trained_model_dir}c_model_animeGAN_GP.h5")
+
         latent_vector = tf.random.normal(
             shape=(self.sample_img, self.latent_dim))
         generated_images = self.generator(latent_vector)
@@ -59,8 +62,8 @@ def train(
     data_dir: str = "dataset/",
     result_dir: str = "results/",
     batch_size: int = 32,
-    image_h: int = 640,
-    image_w: int = 384,
+    image_h: int = 128,
+    image_w: int = 128,
     image_c: int = 3,
     latent_dim: int = 256,
     epoch: int = 150,
