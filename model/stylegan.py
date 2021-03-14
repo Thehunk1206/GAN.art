@@ -2,17 +2,17 @@ import tensorflow as tf
 from tensorflow.python import keras
 
 
-class WGAN(keras.Model):
+class Stylegan(keras.Model):
 
     def __init__(
         self,
         critic: keras.Model,
         generator: keras.Model,
         latent_dim=128,
-        n_critic=4,
-        gp_weight=12.0,
+        n_critic=1,
+        gp_weight=10.0,
     ):
-        super(WGAN, self).__init__()
+        super(Stylegan, self).__init__()
         self.critic = critic
         self.generator = generator
         self.latent_dim = latent_dim
@@ -20,7 +20,7 @@ class WGAN(keras.Model):
         self.gp_weight = gp_weight
 
     def compile(self, c_optimizer, g_optimizer, c_loss_fn, g_loss_fn):
-        super(WGAN, self).compile()
+        super(Stylegan, self).compile()
         self.c_optimizer = c_optimizer
         self.g_optimizer = g_optimizer
         self.c_loss_fn = c_loss_fn
@@ -73,16 +73,22 @@ class WGAN(keras.Model):
         # Critic(Discriminator) 'x' more times than Generator at each train step
 
         batch_size = tf.shape(real_images)[0]
+        img_h = tf.shape(real_images)[1]
+        img_w = tf.shape(real_images)[2]
 
         for _ in range(self.n_critic):
             # latent vector
             random_latent_vectors = tf.random.normal(
                 shape=(batch_size, self.latent_dim)
             )
+            # stochastic noise
+            noise_in = tf.random.normal(
+                shape=(batch_size, img_h, img_w, 1))
+
             with tf.GradientTape() as ctape:
                 # generate fake image
                 fake_images = self.generator(
-                    random_latent_vectors, training=True)
+                    [random_latent_vectors,noise_in], training=True)
                 # get output of critic on fake images
                 fake_logits = self.critic(fake_images, training=True)
                 # get outpit of critic on real images
@@ -105,15 +111,18 @@ class WGAN(keras.Model):
             )
 
         # Training Generator
-        # get latent vector
+        # get latent vector and stochastic noise
         random_latent_vectors = tf.random.normal(
             shape=(batch_size, self.latent_dim)
         )
 
+        noise_in = tf.random.normal(
+            shape=(batch_size, img_h, img_w, 1))
+
         with tf.GradientTape() as gtape:
             # genrate a batch of fake image
             generated_images = self.generator(
-                random_latent_vectors, training=True)
+                [random_latent_vectors, noise_in], training=True)
             # get the critics output on fake generated images
             generated_logits = self.critic(generated_images, training=True)
 
@@ -126,4 +135,4 @@ class WGAN(keras.Model):
         self.g_optimizer.apply_gradients(
             zip(g_gradients, self.generator.trainable_variables)
         )
-        return {"c_loss": c_loss, "g_loss": g_loss, "Gradient_penalty":gp}
+        return {"c_loss": c_loss, "g_loss": g_loss, "Gradient_penalty": gp}

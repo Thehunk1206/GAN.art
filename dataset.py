@@ -14,7 +14,7 @@ class TfdataPipeline:
         self, IMG_H: int = 128,
         IMG_W: int = 128,
         IMG_C: int = 3,
-        batch_size:int = 64
+        batch_size:int = 16
     ) -> None:
         self.IMG_H = IMG_H
         self.IMG_W = IMG_W
@@ -27,8 +27,8 @@ class TfdataPipeline:
         image = tf.io.decode_jpeg(image)
         image = tf.image.resize(image, (self.IMG_H, self.IMG_W), method=ResizeMethod.BICUBIC)
         image = tf.cast(image, tf.float32)
-        # scale the pixel value between -1 to 1
-        image = (image - 127.5)/127.5
+        # scale the pixel value between 0 to 1
+        image = (image)/255
         return image
 
 

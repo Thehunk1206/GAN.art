@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from model.critic import build_critic, build_critic_for_nonsquare
 from model.generator import build_generator, build_generator_for_nonsquare
-from model.WGAN_GP import WGAN
+from model.stylegan import Stylegan
 from losses import critic_loss, generator_loss
 from dataset import TfdataPipeline
 
@@ -23,6 +23,8 @@ class MonitorGan(callbacks.Callback):
         critic: keras.Model,
         sample_img: int = 16,
         latent_dim: int = 128,
+        IMG_H: int = 128,
+        IMG_W: int = 128,
         result_dir: str = 'results/',
         trained_model_dir: str = 'trained_model/'
 
@@ -32,6 +34,8 @@ class MonitorGan(callbacks.Callback):
         self.critic = critic
         self.sample_img = sample_img
         self.latent_dim = latent_dim
+        self.IMG_H = IMG_H
+        self.IMG_W = IMG_W
         self.result_dir = result_dir
         self.trained_model_dir = trained_model_dir
 
@@ -41,15 +45,22 @@ class MonitorGan(callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         if epoch % 10 == 0:
             self.generator.save(
-                f"{self.trained_model_dir}g_model_WGAN_GP_epoch_{epoch}.h5")
+                f"{self.trained_model_dir}g_model_StyleGAN_epoch_{epoch}.h5")
             self.critic.save(
-                f"{self.trained_model_dir}c_model_WGAN_GP_epoch_{epoch}.h5")
+                f"{self.trained_model_dir}c_model_StyleGAN_epoch_{epoch}.h5")
 
-        latent_vector = tf.random.normal(
+        self.generator.save(
+            f"{self.trained_model_dir}latest_g_model_StyleGan.h5")
+        self.critic.save(
+            f"{self.trained_model_dir}latest_c_model_styleGan.h5")
+
+        latent_in = tf.random.normal(
             shape=(self.sample_img, self.latent_dim))
-        generated_images = self.generator(latent_vector)
-        # normalize the image having -1 to 1 to 0 to 1
-        generated_images = (generated_images+1.0)/2.0
+
+        noise_in = tf.random.normal(
+            shape=(self.sample_img,self.IMG_H, self.IMG_W, 1))
+
+        generated_images = self.generator([latent_in, noise_in])
         for i in range(16):
             plt.subplot(4, 4, i+1)
             plt.axis('off')
@@ -64,16 +75,16 @@ def train(
     pre_trained_g_model_path: str = None,
     data_dir: str = "abstract_art/",
     result_dir: str = "results/",
-    batch_size: int = 32,
+    batch_size: int = 16,
     image_h: int = 128,
     image_w: int = 128,
     image_c: int = 3,
     latent_dim: int = 256,
-    epoch: int = 150,
-    LR=0.0002,
+    epoch: int = 1,
+    LR=0.0001,
     beta_1: float = 0.0,
     beta_2: float = 0.9,
-    n_critic: int = 5,
+    n_critic: int = 1,
     gp_weight=10,
 
 ):
@@ -145,7 +156,7 @@ def train(
     )
 
     # instantiating wgan
-    wgan_gp = WGAN(
+    stylegan = Stylegan(
         critic=c_model,
         generator=g_model,
         latent_dim=latent_dim,
@@ -153,17 +164,15 @@ def train(
         gp_weight=gp_weight
     )
 
-    wgan_gp.compile(
+    stylegan.compile(
         c_optimizer=critic_optimizer,
         g_optimizer=generator_optimizer,
         c_loss_fn=critic_loss,
         g_loss_fn=generator_loss
     )
 
-    #history = wgan_gp.fit(image_dataset, batch_size=batch_size, epochs=epoch, callbacks=[clbk])
+    history = stylegan.fit(image_dataset, batch_size=batch_size, epochs=epoch, callbacks=[clbk])
 
 
 if __name__ == "__main__":
-    tf.random.set_seed(999)
-
     train()
