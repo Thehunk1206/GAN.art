@@ -39,8 +39,11 @@ class MonitorGan(callbacks.Callback):
             os.mkdir(self.trained_model_dir)
 
     def on_epoch_end(self, epoch, logs=None):
-        self.generator.save(f"{self.trained_model_dir}g_model_animeGAN_GP.h5")
-        self.critic.save(f"{self.trained_model_dir}c_model_animeGAN_GP.h5")
+        if epoch % 10 == 0:
+            self.generator.save(
+                f"{self.trained_model_dir}g_model_WGAN_GP_epoch_{epoch}.h5")
+            self.critic.save(
+                f"{self.trained_model_dir}c_model_WGAN_GP_epoch_{epoch}.h5")
 
         latent_vector = tf.random.normal(
             shape=(self.sample_img, self.latent_dim))
@@ -59,7 +62,7 @@ class MonitorGan(callbacks.Callback):
 def train(
     pre_trained_c_model_path: str = None,
     pre_trained_g_model_path: str = None,
-    data_dir: str = "dataset/",
+    data_dir: str = "abstract_art/",
     result_dir: str = "results/",
     batch_size: int = 32,
     image_h: int = 128,
@@ -68,12 +71,13 @@ def train(
     latent_dim: int = 256,
     epoch: int = 150,
     LR=0.0002,
-    beta_1: float = 0.1,
+    beta_1: float = 0.0,
     beta_2: float = 0.9,
     n_critic: int = 5,
     gp_weight=10,
 
 ):
+
     if not os.path.exists(result_dir):
         os.mkdir("results")
 
@@ -160,4 +164,6 @@ def train(
 
 
 if __name__ == "__main__":
+    tf.random.set_seed(999)
+
     train()

@@ -69,7 +69,6 @@ def build_critic(input_shape: tuple = (128, 128, 3)):
     x = Conv2D(
         f[1]*filters, kernel_size=(3, 3), strides=(1, 1),
         padding="same", use_bias=True,
-        dilation_rate=(2, 2)
     )(x)
     x = LeakyReLU(alpha=0.2)(x)
 
