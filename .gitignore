@@ -1,4 +1,4 @@
-dataset/
-small_dataset/
+abstract_art/
 __pycache__/
 .vscode/
+*.zip
