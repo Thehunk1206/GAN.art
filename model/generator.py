@@ -6,8 +6,11 @@ from tensorflow.keras.models import Model
 import tensorflow.keras.backend as K
 from tensorflow.python import keras
 
+channel_factor = 32
 
 # Lambda functions
+
+
 def AdaIN(x: list):
     '''
     x : Its a list of [image representation, (scale)styleGamma, (bias)styleBeta]
@@ -35,7 +38,7 @@ def crop_and_fit(x):
     w = x[1].shape[2]
 
     # crop noise channel having same h and w as image representation
-    return x[0][:, :h*2, :w*2, :]
+    return x[0][:, :h, :w, :]
 
 
 def g_block(
@@ -47,22 +50,27 @@ def g_block(
         upsample_size: tuple = (2, 2),
         padding="same",
         use_bias: bool = True,
+        upsample: bool = True
 ):
+
+    # upsampling
+    if upsample:
+        x = UpSampling2D(size=upsample_size, interpolation='bilinear')(x)
+    else:
+        x = Activation('linear')(x)
+
     # Get (Scale)styleGamma and (Bias)styleBeta prams for AdaIn
-    g = Dense(filters, bias_initializer='ones')(latent_vector)
+    g = Dense(filters)(latent_vector)
     b = Dense(filters)(latent_vector)
 
     # Crop noise and scale using Dense layer
     noise = Lambda(crop_and_fit)([noise, x])
     noise = Dense(filters)(noise)
 
-    #upsampling and conv
-    x_up = UpSampling2D(size=upsample_size, interpolation='bilinear')(x)
-
     out = Conv2D(
         filters, kernel_size,
         padding=padding, use_bias=use_bias
-    )(x_up)
+    )(x)
     # add noise
     out = add([out, noise])
 
@@ -96,10 +104,6 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     latent = LeakyReLU(alpha=0.1)(latent)
     latent = Dense(latent_dim)(latent)
     latent = LeakyReLU(alpha=0.1)(latent)
-    latent = Dense(latent_dim)(latent)
-    latent = LeakyReLU(alpha=0.1)(latent)
-    latent = Dense(latent_dim)(latent)
-    latent = LeakyReLU(alpha=0.1)(latent)
 
     # Using constant as input to main Generator model
     x = Dense(1)(latent_in)
@@ -108,16 +112,24 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     x = Dense(4*4*latent_dim)(x)
     x = LeakyReLU(alpha=0.2)(x)
     x = Reshape((4, 4, latent_dim))(x)
-    
-    x = g_block(x, filters=128, latent_vector=latent, noise=noise_in)
 
-    x = g_block(x, filters=64, latent_vector=latent, noise=noise_in)
+    x = g_block(x, filters=8*channel_factor, latent_vector=latent,
+                noise=noise_in, upsample=False)
 
-    x = g_block(x, filters=32, latent_vector=latent, noise=noise_in)
+    x = g_block(x, filters=8*channel_factor,
+                latent_vector=latent, noise=noise_in)
 
-    x = g_block(x, filters=16, latent_vector=latent, noise=noise_in)
+    x = g_block(x, filters=6*channel_factor,
+                latent_vector=latent, noise=noise_in)
 
-    x = g_block(x, filters=8, latent_vector=latent, noise=noise_in)
+    x = g_block(x, filters=4*channel_factor,
+                latent_vector=latent, noise=noise_in)
+
+    x = g_block(x, filters=2*channel_factor,
+                latent_vector=latent, noise=noise_in)
+
+    x = g_block(x, filters=channel_factor,
+                latent_vector=latent, noise=noise_in)
 
     x = Conv2D(filters=3, kernel_size=(3, 3),
                strides=(1, 1), padding='same', use_bias=True)(x)
@@ -149,10 +161,6 @@ def build_generator_for_nonsquare(latent_dim: int, image_size: tuple = (320, 192
     latent = LeakyReLU(alpha=0.1)(latent)
     latent = Dense(latent_dim)(latent)
     latent = LeakyReLU(alpha=0.1)(latent)
-    latent = Dense(latent_dim)(latent)
-    latent = LeakyReLU(alpha=0.1)(latent)
-    latent = Dense(latent_dim)(latent)
-    latent = LeakyReLU(alpha=0.1)(latent)
 
     # Using constant as input to main Generator model
     x = Dense(1)(latent_in)
@@ -162,17 +170,26 @@ def build_generator_for_nonsquare(latent_dim: int, image_size: tuple = (320, 192
     x = LeakyReLU(alpha=0.2)(x)
     x = Reshape((h_factor, w_factor, latent_dim))(x)
 
-    x = g_block(x, filters=320, latent_vector=latent, noise=noise_in)
+    x = g_block(x, filters=16*channel_factor, latent_vector=latent,
+                noise=noise_in, upsample=False)
 
-    x = g_block(x, filters=160, latent_vector=latent, noise=noise_in)
+    x = g_block(x, filters=16*channel_factor,
+                latent_vector=latent, noise=noise_in)
 
-    x = g_block(x, filters=80, latent_vector=latent, noise=noise_in)
+    x = g_block(x, filters=8*channel_factor,
+                latent_vector=latent, noise=noise_in)
 
-    x = g_block(x, filters=40, latent_vector=latent, noise=noise_in)
+    x = g_block(x, filters=6*channel_factor,
+                latent_vector=latent, noise=noise_in)
 
-    x = g_block(x, filters=20, latent_vector=latent, noise=noise_in)
+    x = g_block(x, filters=4*channel_factor,
+                latent_vector=latent, noise=noise_in)
 
-    x = g_block(x, filters=10, latent_vector=latent, noise=noise_in)
+    x = g_block(x, filters=2*channel_factor,
+                latent_vector=latent, noise=noise_in)
+
+    x = g_block(x, filters=channel_factor,
+                latent_vector=latent, noise=noise_in)
 
     x = Conv2D(filters=3, kernel_size=(3, 3),
                strides=(1, 1), padding='same', use_bias=True)(x)

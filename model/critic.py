@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Conv2D, \
     LeakyReLU, Dense, Dropout, Input, Activation, Flatten, AveragePooling2D
 from tensorflow.keras.models import Model
 
-cha = 48
+channel_factor = 32
 
 def d_block(
     x,
@@ -39,17 +39,17 @@ def build_critic(input_shape: tuple = (128, 128, 3)):
 
     image_input = Input(input_shape, name = "Image_in")
 
-    x = d_block(image_input, 8)
+    x = d_block(image_input, channel_factor)
 
-    x = d_block(x, 16)
+    x = d_block(x, 2 * channel_factor)
 
-    x = d_block(x, 32)
+    x = d_block(x, 4 * channel_factor)
 
-    x = d_block(x, 64)
+    x = d_block(x, 6 * channel_factor)
 
-    x = d_block(x, 128)
+    x = d_block(x, 8 * channel_factor)
 
-    x = d_block(x, 128, use_pool=False)
+    x = d_block(x, 8 * channel_factor, use_pool=False)
     
     x = Flatten()(x)
     x = Dropout(0.2)(x)
@@ -69,19 +69,19 @@ def build_critic_for_nonsquare(input_shape: tuple = (320, 192, 3)):
 
     image_input = Input(input_shape, name = "Image_in")
 
-    x = d_block(image_input, 10)
+    x = d_block(image_input, channel_factor)
 
-    x = d_block(x, 20)
+    x = d_block(x, 2*channel_factor)
 
-    x = d_block(x, 40)
+    x = d_block(x, 4*channel_factor)
 
-    x = d_block(x, 80)
+    x = d_block(x, 6*channel_factor)
 
-    x = d_block(x, 160)
+    x = d_block(x, 8*channel_factor)
 
-    x = d_block(x, 320)
+    x = d_block(x, 16*channel_factor)
 
-    x = d_block(x, 320, use_pool=False)
+    x = d_block(x, 16*channel_factor, use_pool=False)
 
     x = Flatten()(x)
     x = Dropout(0.2)(x)

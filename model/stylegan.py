@@ -33,7 +33,7 @@ class Stylegan(keras.Model):
         gradient norm of atmost 1 everywhere.
 
         To penalize the gradients we calculate C_loss on an interpolated image
-        between real and fake image i.e 
+        between real and fake image i.e
         x_interpolated = x_real*alpha + (1-alpha)*x_fake
         where alpha is randomly sampled from a normal dist between 0 and 1
 
@@ -88,7 +88,7 @@ class Stylegan(keras.Model):
             with tf.GradientTape() as ctape:
                 # generate fake image
                 fake_images = self.generator(
-                    [random_latent_vectors,noise_in], training=True)
+                    [random_latent_vectors, noise_in], training=True)
                 # get output of critic on fake images
                 fake_logits = self.critic(fake_images, training=True)
                 # get outpit of critic on real images
@@ -135,4 +135,4 @@ class Stylegan(keras.Model):
         self.g_optimizer.apply_gradients(
             zip(g_gradients, self.generator.trainable_variables)
         )
-        return {"c_loss": c_loss, "g_loss": g_loss, "Gradient_penalty": gp}
+        return float(c_loss.numpy()), float(g_loss.numpy()), float(gp.numpy())
