@@ -11,13 +11,12 @@ def d_block(
     filters: int,
     kernel_size: tuple = (3, 3),
     padding: str = 'same',
-    use_bias: bool = True,
     use_dropout: bool = True,
     drop_value: float = 0.2,
     use_pool: bool = True
 ):
     x = Conv2D(filters, kernel_size,
-               padding=padding, use_bias=use_bias)(x)
+               padding=padding,kernel_initializer='he_normal')(x)
     x = LeakyReLU(alpha=0.2)(x)
     if use_dropout:
         x = Dropout(drop_value)(x)
@@ -49,11 +48,16 @@ def build_critic(input_shape: tuple = (128, 128, 3)):
 
     x = d_block(x, 8 * channel_factor)
 
+    x = d_block(x, 8 * channel_factor)
+
     x = d_block(x, 8 * channel_factor, use_pool=False)
     
     x = Flatten()(x)
+
+    x = Dense(channel_factor, kernel_initializer='he_normal')(x)
+
     x = Dropout(0.2)(x)
-    out = Dense(1)(x)
+    out = Dense(1, kernel_initializer='he_normal')(x)
 
     return Model(image_input, out, name="Critic1")
 
@@ -81,11 +85,17 @@ def build_critic_for_nonsquare(input_shape: tuple = (320, 192, 3)):
 
     x = d_block(x, 16*channel_factor)
 
+    x = d_block(x, 16*channel_factor)
+
     x = d_block(x, 16*channel_factor, use_pool=False)
 
     x = Flatten()(x)
+
+    x = Dense(channel_factor, kernel_initializer='he_normal')(x)
+
     x = Dropout(0.2)(x)
-    out = Dense(1)(x)
+
+    out = Dense(1,kernel_initializer='he_normal')(x)
 
     
 

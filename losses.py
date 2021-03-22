@@ -15,4 +15,8 @@ def critic_loss(real_image, fake_image):
 
 
 def generator_loss(fake_image):
-    return -tf.reduce_mean(fake_image)
+    return tf.reduce_mean(fake_image)
+
+
+def hinge_loss(real_image, fake_image):
+    return tf.reduce_mean(tf.nn.relu(1 + real_image) + tf.nn.relu(1-fake_image))
