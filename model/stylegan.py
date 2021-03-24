@@ -9,14 +9,12 @@ class Stylegan(keras.Model):
         critic: keras.Model,
         generator: keras.Model,
         latent_dim=128,
-        n_critic=1,
         gp_weight=10.0,
     ):
         super(Stylegan, self).__init__()
         self.critic = critic
         self.generator = generator
         self.latent_dim = latent_dim
-        self.n_critic = n_critic
         self.gp_weight = gp_weight
 
     def compile(self, c_optimizer, g_optimizer, c_loss_fn, g_loss_fn):
@@ -26,6 +24,7 @@ class Stylegan(keras.Model):
         self.c_loss_fn = c_loss_fn
         self.g_loss_fn = g_loss_fn
 
+    @tf.function
     def calculate_gradient_penalty(self, batch_size, real_images, fake_images):
         '''
         This function calculates Gradient penalty in order to enforce 1-Lipschitz
@@ -58,6 +57,7 @@ class Stylegan(keras.Model):
 
         return gp
 
+    @tf.function
     def train_step(self, real_images):
 
         # we'll perform following steps for each batch as laid in
@@ -69,70 +69,47 @@ class Stylegan(keras.Model):
         # 5. Add the gradient penalty to critic loss
         # 6. return g_loss and C_loss as dict
 
-        # we'll Train critic first. The WGAN_GP Paper suggests to train
-        # Critic(Discriminator) 'x' more times than Generator at each train step
-
         batch_size = tf.shape(real_images)[0]
         img_h = tf.shape(real_images)[1]
         img_w = tf.shape(real_images)[2]
 
-        for _ in range(self.n_critic):
-            # latent vector
-            random_latent_vectors = tf.random.normal(
-                shape=(batch_size, self.latent_dim)
-            )
-            # stochastic noise
-            noise_in = tf.random.normal(
-                shape=(batch_size, img_h, img_w, 1))
-
-            with tf.GradientTape() as ctape:
-                # generate fake image
-                fake_images = self.generator(
-                    [random_latent_vectors, noise_in], training=True)
-                # get output of critic on fake images
-                fake_logits = self.critic(fake_images, training=True)
-                # get outpit of critic on real images
-                real_logits = self.critic(real_images, training=True)
-
-                # calculate loss of Critic using values on fake and real images
-                c_cost = self.c_loss_fn(real_logits, fake_logits)
-                # calulate Gradient penalty
-                gp = self.calculate_gradient_penalty(
-                    batch_size, real_images, fake_images)
-                # add this penalty to c_cost
-                c_loss = c_cost + (self.gp_weight * gp)
-
-            # calculate Gradients w.r.t to Critic loss
-            c_gradient = ctape.gradient(
-                c_loss, self.critic.trainable_variables)
-            # update the weigths of critic using optimizer
-            self.c_optimizer.apply_gradients(
-                zip(c_gradient, self.critic.trainable_variables)
-            )
-
-        # Training Generator
-        # get latent vector and stochastic noise
+        # Train Generator and Critic
+        # latent vector
         random_latent_vectors = tf.random.normal(
             shape=(batch_size, self.latent_dim)
         )
-
+        # stochastic noise
         noise_in = tf.random.normal(
             shape=(batch_size, img_h, img_w, 1))
 
-        with tf.GradientTape() as gtape:
-            # genrate a batch of fake image
-            generated_images = self.generator(
+        with tf.GradientTape() as ctape, tf.GradientTape() as gtape:
+            # generate fake image
+            fake_images = self.generator(
                 [random_latent_vectors, noise_in], training=True)
-            # get the critics output on fake generated images
-            generated_logits = self.critic(generated_images, training=True)
 
-            g_loss = self.g_loss_fn(generated_logits)
+            # get output of critic on fake images
+            fake_logits = self.critic(fake_images, training=True)
+            # get outpit of critic on real images
+            real_logits = self.critic(real_images, training=True)
 
-        # Calculate gradients w.r.t to g_loss
+            # calculate loss of Generator and Critic using values on fake and real images
+            g_loss = self.g_loss_fn(fake_logits)
+            c_cost = self.c_loss_fn(real_logits, fake_logits)
+            gp = self.calculate_gradient_penalty(
+                batch_size, real_images, fake_images)
+            c_loss = c_cost + (self.gp_weight * gp)
+
+        # Calculate gradients Of Generator and Criticx
         g_gradients = gtape.gradient(
             g_loss, self.generator.trainable_variables)
-        # update the weigths of generator using gen_optimizer
+        c_gradient = ctape.gradient(
+            c_loss, self.critic.trainable_variables)
+
+        # update the weigths of generator and critic using optimizer
         self.g_optimizer.apply_gradients(
             zip(g_gradients, self.generator.trainable_variables)
         )
-        return float(c_loss.numpy()), float(g_loss.numpy()), float(gp.numpy())
+        self.c_optimizer.apply_gradients(
+            zip(c_gradient, self.critic.trainable_variables))
+
+        return float(c_loss), float(g_loss), float(gp)

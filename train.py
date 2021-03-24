@@ -97,15 +97,14 @@ def train(
     plots_dir: str = "loss_graph_dir/",
     sample_image_dir: str = "sample_art/",
     batch_size: int = 9,
-    image_h: int = 320,
-    image_w: int = 192,
+    image_h: int = 640,
+    image_w: int = 384,
     image_c: int = 3,
     latent_dim: int = 256,
     epoch: int = 300,
     LR=0.0001,
     beta_1: float = 0.0,
     beta_2: float = 0.9,
-    n_critic: int = 1,
     gp_weight=10,
 
 ):
@@ -179,7 +178,6 @@ def train(
         critic=c_model,
         generator=g_model,
         latent_dim=latent_dim,
-        n_critic=n_critic,
         gp_weight=gp_weight
     )
 
