@@ -49,7 +49,6 @@ def g_block(
         kernel_size: tuple = (3, 3),
         upsample_size: tuple = (2, 2),
         padding="same",
-        use_bias: bool = True,
         upsample: bool = True
 ):
 
@@ -65,11 +64,12 @@ def g_block(
 
     # Crop noise and scale using Dense layer
     noise = Lambda(crop_and_fit)([noise, x])
-    noise = Dense(filters)(noise)
+    noise = Dense(filters,kernel_initializer='zeros')(noise)
 
     out = Conv2D(
         filters, kernel_size,
-        padding=padding, use_bias=use_bias
+        padding=padding,
+        kernel_initializer='he_normal'
     )(x)
     # add noise
     out = add([out, noise])
@@ -109,7 +109,7 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     x = Dense(1)(latent_in)
     # no matter whats the latent input be, it will always be constant
     x = Lambda(lambda x: x * 0 + 1, name="constant")(x)
-    x = Dense(4*4*latent_dim)(x)
+    x = Dense(4*4*latent_dim, kernel_initializer='he_normal')(x)
     x = LeakyReLU(alpha=0.2)(x)
     x = Reshape((4, 4, latent_dim))(x)
 
@@ -130,10 +130,13 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
 
     x = g_block(x, filters=channel_factor,
                 latent_vector=latent, noise=noise_in)
+    
+    x = g_block(x, filters=channel_factor,
+                latent_vector=latent, noise=noise_in)
 
     x = Conv2D(filters=3, kernel_size=(3, 3),
-               strides=(1, 1), padding='same', use_bias=True)(x)
-    fake_out = Activation('sigmoid')(x)
+               strides=(1, 1), padding='same', kernel_initializer='he_normal')(x)
+    fake_out = Activation('tanh')(x)
 
     return Model(inputs=[latent_in, noise_in], outputs=fake_out, name="Generator_for_square")
 
@@ -166,7 +169,7 @@ def build_generator_for_nonsquare(latent_dim: int, image_size: tuple = (320, 192
     x = Dense(1)(latent_in)
     # no matter whats the latent input be, it will always be constant
     x = Lambda(lambda x: x * 0 + 1, name="constant")(x)
-    x = Dense(h_factor*w_factor*latent_dim)(x)
+    x = Dense(h_factor*w_factor*latent_dim, kernel_initializer='he_normal')(x)
     x = LeakyReLU(alpha=0.2)(x)
     x = Reshape((h_factor, w_factor, latent_dim))(x)
 
@@ -190,9 +193,12 @@ def build_generator_for_nonsquare(latent_dim: int, image_size: tuple = (320, 192
 
     x = g_block(x, filters=channel_factor,
                 latent_vector=latent, noise=noise_in)
+    
+    x = g_block(x, filters=channel_factor,
+                latent_vector=latent, noise=noise_in)
 
     x = Conv2D(filters=3, kernel_size=(3, 3),
-               strides=(1, 1), padding='same', use_bias=True)(x)
-    fake_out = Activation('sigmoid')(x)
+               strides=(1, 1), padding='same', kernel_initializer='he_normal')(x)
+    fake_out = Activation('tanh')(x)
 
     return Model(inputs=[latent_in, noise_in], outputs=fake_out, name="Generator_for_non_square")

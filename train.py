@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from model.critic import build_critic, build_critic_for_nonsquare
 from model.generator import build_generator, build_generator_for_nonsquare
 from model.stylegan import Stylegan
-from losses import critic_loss, generator_loss
+from losses import critic_loss, generator_loss, hinge_loss
 from dataset import TfdataPipeline
 
 import tensorflow as tf
@@ -15,6 +15,7 @@ from tensorflow import keras
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.models import load_model
+from tensorflow.keras import preprocessing
 
 
 def check_dir(*args):
@@ -23,14 +24,21 @@ def check_dir(*args):
             os.mkdir(arg)
 
 
+def save_sample_image(step: int, sample_image_dir: str, images: list):
+    for i in range(len(images)):
+        img = preprocessing.image.array_to_img(images[i])
+        img.save(f"{sample_image_dir}art_{step}_{i}")
+
+
 def plotResults(
     generator: keras.Model,
     latent_dim: int,
     IMG_H: int,
     IMG_W: int,
     step: int,
+    sample_image_dir: str,
     number_of_sample: int = 16,
-    result_dir: str = "results/"
+    result_dir: str = "results/",
 ):
     latent_in = tf.random.normal(
         shape=(number_of_sample, latent_dim))
@@ -39,6 +47,8 @@ def plotResults(
         shape=(number_of_sample, IMG_H, IMG_W, 1))
 
     generated_images = generator([latent_in, noise_in])
+    generated_images = (generated_images+1.0)/2.0
+    save_sample_image(step,sample_image_dir,generated_images)
     for i in range(16):
         plt.subplot(4, 4, i+1)
         plt.axis('off')
@@ -85,16 +95,16 @@ def train(
     result_dir: str = "results/",
     save_model_dir: str = "trained_model/",
     plots_dir: str = "loss_graph_dir/",
-    batch_size: int = 16,
-    image_h: int = 320,
-    image_w: int = 192,
+    sample_image_dir: str = "sample_art/",
+    batch_size: int = 9,
+    image_h: int = 640,
+    image_w: int = 384,
     image_c: int = 3,
     latent_dim: int = 256,
-    steps: int = 2,
+    epoch: int = 300,
     LR=0.0001,
     beta_1: float = 0.0,
     beta_2: float = 0.9,
-    n_critic: int = 1,
     gp_weight=10,
 
 ):
@@ -105,7 +115,8 @@ def train(
     check_dir(
         result_dir,
         save_model_dir,
-        plots_dir
+        plots_dir,
+        sample_image_dir
     )
 
     # start pipiline for datset
@@ -123,7 +134,7 @@ def train(
         learning_rate=LR, beta_1=beta_1, beta_2=beta_2
     )
     critic_optimizer = Adam(
-        learning_rate=LR, beta_1=beta_1, beta_2=beta_2
+        learning_rate=LR*4, beta_1=beta_1, beta_2=beta_2
     )
 
     # Build mddels
@@ -167,14 +178,13 @@ def train(
         critic=c_model,
         generator=g_model,
         latent_dim=latent_dim,
-        n_critic=n_critic,
         gp_weight=gp_weight
     )
 
     stylegan.compile(
         c_optimizer=critic_optimizer,
         g_optimizer=generator_optimizer,
-        c_loss_fn=critic_loss,
+        c_loss_fn=hinge_loss,
         g_loss_fn=generator_loss
     )
 
@@ -183,38 +193,42 @@ def train(
     generator_losses = []
     critic_losses = []
     gradient_panelties = []
-    for step in range(steps):
-        closs, gloss, gp = stylegan.train_step(next(iter(image_dataset)))
+    step = 0
 
-        if step % 50 == 0:
-            critic_losses.append(closs)
-            generator_losses.append(gloss)
-            gradient_panelties.append(gp)
+    for e in range(epoch):
+        for data in image_dataset:
+            print(f"Epoch: {e}")
+            closs, gloss, gp = stylegan.train_step(data)
+            step = step + 1
+            if step % 50 == 0:
+                critic_losses.append(closs)
+                generator_losses.append(gloss)
+                gradient_panelties.append(gp)
 
-            print(f"\n\nStep No.: {step}")
-            print(f"C Loss: {closs}")
-            print(f"G loss: {gloss}")
-            print(f"GP: {gp}")
-            print(f"Number images shown: {batch_size*step}")
-            print("="*30)
-            s = round((time.time() - start_time), 4)
-            time_per_step = (s/50)*1000
-            print(f"{time_per_step}ms/step")
-            start_time = time.time()
+                print(f"\n\nStep No.: {step}")
+                print(f"C Loss: {closs}")
+                print(f"G loss: {gloss}")
+                print(f"GP: {gp}")
+                print(f"Number images shown: {batch_size*step}")
+                print("="*30)
+                s = round((time.time() - start_time), 4)
+                time_per_step = (s/50)*1000
+                print(f"{time_per_step}ms/step")
+                start_time = time.time()
 
-            steps_per_second = 100 / s
-            steps_per_min = steps_per_second * 60
-            print(f"steps/sec: {steps_per_second}")
-            print(f"steps/min: {steps_per_min}")
+                steps_per_second = 50 / s
+                steps_per_min = steps_per_second * 60
+                print(f"steps/sec: {steps_per_second}")
+                print(f"steps/min: {steps_per_min}")
 
-        if step % 500 == 0:
-            print("[Info] Plotting loss, Plotting results")
-            plotResults(g_model, latent_dim, image_h, image_w, step)
-            plotLoss(critic_losses, generator_losses,
-                     gradient_panelties, step, plots_dir)
-        if step % 2000 == 0 and step > 0:
-            print("[info] Saving model")
-            saveModel(g_model, c_model, step, save_model_dir)
+            if step % 500 == 0:
+                print("[Info] Plotting loss, Plotting results")
+                plotResults(g_model, latent_dim, image_h, image_w, step,sample_image_dir)
+                plotLoss(critic_losses, generator_losses,
+                         gradient_panelties, step, plots_dir)
+            if step % 10000 == 0 and step > 0:
+                print("[info] Saving model")
+                saveModel(g_model, c_model, step, save_model_dir)
 
 
 if __name__ == "__main__":
