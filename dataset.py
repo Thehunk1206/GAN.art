@@ -22,7 +22,7 @@ class TfdataPipeline:
 
     def _load_image(self, image_path: str):
         image = tf.io.read_file(image_path)
-        image = tf.io.decode_jpeg(image)
+        image = tf.io.decode_jpeg(image,channels=3)
         image = tf.image.resize(
             image, (self.IMG_H, self.IMG_W), method=ResizeMethod.BICUBIC)
         image = tf.cast(image, tf.float32)

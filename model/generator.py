@@ -104,6 +104,10 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     latent = LeakyReLU(alpha=0.1)(latent)
     latent = Dense(latent_dim)(latent)
     latent = LeakyReLU(alpha=0.1)(latent)
+    latent = Dense(latent_dim)(latent)
+    latent = LeakyReLU(alpha=0.1)(latent)
+    latent = Dense(latent_dim)(latent)
+    latent = LeakyReLU(alpha=0.1)(latent)
 
     # Using constant as input to main Generator model
     x = Dense(1)(latent_in)
@@ -113,24 +117,35 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     x = LeakyReLU(alpha=0.2)(x)
     x = Reshape((4, 4, latent_dim))(x)
 
-    x = g_block(x, filters=8*channel_factor, latent_vector=latent,
+    #4x4
+    x = g_block(x, filters=16*channel_factor, latent_vector=latent,
                 noise=noise_in, upsample=False)
 
+    #8x8
+    x = g_block(x, filters=10*channel_factor,
+                latent_vector=latent, noise=noise_in)
+
+    #16x16
     x = g_block(x, filters=8*channel_factor,
                 latent_vector=latent, noise=noise_in)
 
+    #32x32
     x = g_block(x, filters=6*channel_factor,
                 latent_vector=latent, noise=noise_in)
 
+    #64x64
     x = g_block(x, filters=4*channel_factor,
                 latent_vector=latent, noise=noise_in)
-
+    
+    #128x128
     x = g_block(x, filters=2*channel_factor,
                 latent_vector=latent, noise=noise_in)
-
+    
+    #256x256
     x = g_block(x, filters=channel_factor,
                 latent_vector=latent, noise=noise_in)
-    
+
+    #512x512
     x = g_block(x, filters=channel_factor,
                 latent_vector=latent, noise=noise_in)
 
@@ -157,6 +172,10 @@ def build_generator_for_nonsquare(latent_dim: int, image_size: tuple = (320, 192
 
     # 6 Latent Mapping layers(mlp)
     latent = Dense(latent_dim)(latent_in)
+    latent = LeakyReLU(alpha=0.1)(latent)
+    latent = Dense(latent_dim)(latent)
+    latent = LeakyReLU(alpha=0.1)(latent)
+    latent = Dense(latent_dim)(latent)
     latent = LeakyReLU(alpha=0.1)(latent)
     latent = Dense(latent_dim)(latent)
     latent = LeakyReLU(alpha=0.1)(latent)

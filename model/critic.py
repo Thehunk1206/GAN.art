@@ -42,15 +42,15 @@ def build_critic(input_shape: tuple = (128, 128, 3)):
 
     x = d_block(x, 2 * channel_factor)
 
+    x = d_block(x, 3 * channel_factor)
+
     x = d_block(x, 4 * channel_factor)
 
     x = d_block(x, 6 * channel_factor)
 
     x = d_block(x, 8 * channel_factor)
 
-    x = d_block(x, 8 * channel_factor)
-
-    x = d_block(x, 8 * channel_factor, use_pool=False)
+    x = d_block(x, 16 * channel_factor, use_pool=False)
     
     x = Flatten()(x)
 
@@ -82,8 +82,6 @@ def build_critic_for_nonsquare(input_shape: tuple = (320, 192, 3)):
     x = d_block(x, 6*channel_factor)
 
     x = d_block(x, 8*channel_factor)
-
-    x = d_block(x, 16*channel_factor)
 
     x = d_block(x, 16*channel_factor)
 
