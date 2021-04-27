@@ -98,9 +98,9 @@ def train(
     save_model_dir: str = "trained_model/",
     plots_dir: str = "loss_graph_dir/",
     sample_image_dir: str = "sample_art/",
-    batch_size: int = 8,
-    image_h: int = 512,
-    image_w: int = 512,
+    batch_size: int = 4,
+    image_h: int = 640,
+    image_w: int = 768,
     image_c: int = 3,
     latent_dim: int = 256,
     epoch: int = 300,
@@ -160,7 +160,9 @@ def train(
             # build for non square image
             g_model = build_generator_for_nonsquare(
                 latent_dim=latent_dim,
-                image_size=(image_h, image_w)
+                image_size=(image_h, image_w),
+                h_factor=5,
+                w_factor=6
             )
 
             c_model = build_critic_for_nonsquare(
@@ -199,7 +201,6 @@ def train(
 
     for e in range(epoch):
         for data in image_dataset:
-            print(f"Epoch: {e}")
             closs, gloss, gp = stylegan.train_step(data)
             step = step + 1
             if step % 50 == 0:
@@ -225,7 +226,8 @@ def train(
 
             if step % 200 == 0:
                 print("[Info] Plotting loss, Plotting results")
-                plotResults(g_model, latent_dim, image_h, image_w, step,sample_image_dir)
+                plotResults(g_model, latent_dim, image_h,
+                            image_w, step, sample_image_dir)
                 plotLoss(critic_losses, generator_losses,
                          gradient_panelties, step, plots_dir)
             if step % 10000 == 0 and step > 0:

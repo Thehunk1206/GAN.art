@@ -21,13 +21,16 @@ class TfdataPipeline:
         self.batch_size = batch_size
 
     def _load_image(self, image_path: str):
-        image = tf.io.read_file(image_path)
-        image = tf.io.decode_jpeg(image,channels=3)
-        image = tf.image.resize(
-            image, (self.IMG_H, self.IMG_W), method=ResizeMethod.BICUBIC)
-        image = tf.cast(image, tf.float32)
-        # scale the pixel value between -1 to 1
-        image = (image-127.5)/127.5
+        try:
+            image = tf.io.read_file(image_path)
+            image = tf.io.decode_jpeg(image,channels=3,try_recover_truncated=True)
+            image = tf.image.resize(
+                image, (self.IMG_H, self.IMG_W), method=ResizeMethod.BICUBIC)
+            image = tf.cast(image, tf.float32)
+            # scale the pixel value between -1 to 1
+            image = (image-127.5)/127.5
+        except Exception:
+            pass
         return image
 
     def tf_dataset(self, images_path: str):
