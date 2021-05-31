@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from model.critic import build_critic, build_critic_for_nonsquare
 from model.generator import build_generator, build_generator_for_nonsquare
 from model.stylegan import Stylegan
-from losses import critic_loss, generator_loss, hinge_loss
-from dataset import TfdataPipeline
+from utils.losses import critic_loss, generator_loss, hinge_loss
+from utils.dataset import TfdataPipeline
 
 import tensorflow as tf
 from tensorflow import keras
