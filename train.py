@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 from model.critic import build_critic, build_critic_for_nonsquare
 from model.generator import build_generator, build_generator_for_nonsquare
 from model.stylegan import Stylegan
-from losses import critic_loss, generator_loss, hinge_loss
-from dataset import TfdataPipeline
+from utils.losses import critic_loss, generator_loss, hinge_loss
+from utils.dataset import TfdataPipeline
 
 import tensorflow as tf
 from tensorflow import keras
@@ -39,16 +39,18 @@ def plotResults(
     sample_image_dir: str,
     number_of_sample: int = 16,
     result_dir: str = "results/",
+    save_image: bool = True
 ):
     latent_in = tf.random.normal(
         shape=(number_of_sample, latent_dim))
 
     noise_in = tf.random.normal(
-        shape=(number_of_sample, IMG_H, IMG_W, 1))
+        shape=(1, IMG_H, IMG_W, 1))
 
     generated_images = generator([latent_in, noise_in])
     generated_images = (generated_images+1.0)/2.0
-    save_sample_image(step,sample_image_dir,generated_images)
+    if save_image:
+        save_sample_image(step, sample_image_dir, generated_images)
     for i in range(16):
         plt.subplot(4, 4, i+1)
         plt.axis('off')
@@ -96,14 +98,14 @@ def train(
     save_model_dir: str = "trained_model/",
     plots_dir: str = "loss_graph_dir/",
     sample_image_dir: str = "sample_art/",
-    batch_size: int = 9,
+    batch_size: int = 4,
     image_h: int = 640,
-    image_w: int = 384,
+    image_w: int = 768,
     image_c: int = 3,
     latent_dim: int = 256,
     epoch: int = 300,
     LR=0.0001,
-    beta_1: float = 0.0,
+    beta_1: float = 0.5,
     beta_2: float = 0.9,
     gp_weight=10,
 
@@ -158,7 +160,9 @@ def train(
             # build for non square image
             g_model = build_generator_for_nonsquare(
                 latent_dim=latent_dim,
-                image_size=(image_h, image_w)
+                image_size=(image_h, image_w),
+                h_factor=5,
+                w_factor=6
             )
 
             c_model = build_critic_for_nonsquare(
@@ -197,7 +201,6 @@ def train(
 
     for e in range(epoch):
         for data in image_dataset:
-            print(f"Epoch: {e}")
             closs, gloss, gp = stylegan.train_step(data)
             step = step + 1
             if step % 50 == 0:
@@ -221,9 +224,10 @@ def train(
                 print(f"steps/sec: {steps_per_second}")
                 print(f"steps/min: {steps_per_min}")
 
-            if step % 500 == 0:
+            if step % 200 == 0:
                 print("[Info] Plotting loss, Plotting results")
-                plotResults(g_model, latent_dim, image_h, image_w, step,sample_image_dir)
+                plotResults(g_model, latent_dim, image_h,
+                            image_w, step, sample_image_dir)
                 plotLoss(critic_losses, generator_losses,
                          gradient_panelties, step, plots_dir)
             if step % 10000 == 0 and step > 0:

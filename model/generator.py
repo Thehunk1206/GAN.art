@@ -64,7 +64,7 @@ def g_block(
 
     # Crop noise and scale using Dense layer
     noise = Lambda(crop_and_fit)([noise, x])
-    noise = Dense(filters,kernel_initializer='zeros')(noise)
+    noise = Dense(filters, kernel_initializer='zeros')(noise)
 
     out = Conv2D(
         filters, kernel_size,
@@ -104,6 +104,10 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     latent = LeakyReLU(alpha=0.1)(latent)
     latent = Dense(latent_dim)(latent)
     latent = LeakyReLU(alpha=0.1)(latent)
+    latent = Dense(latent_dim)(latent)
+    latent = LeakyReLU(alpha=0.1)(latent)
+    latent = Dense(latent_dim)(latent)
+    latent = LeakyReLU(alpha=0.1)(latent)
 
     # Using constant as input to main Generator model
     x = Dense(1)(latent_in)
@@ -113,24 +117,35 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     x = LeakyReLU(alpha=0.2)(x)
     x = Reshape((4, 4, latent_dim))(x)
 
-    x = g_block(x, filters=8*channel_factor, latent_vector=latent,
+    # 4x4
+    x = g_block(x, filters=16*channel_factor, latent_vector=latent,
                 noise=noise_in, upsample=False)
 
+    # 8x8
+    x = g_block(x, filters=10*channel_factor,
+                latent_vector=latent, noise=noise_in)
+
+    # 16x16
     x = g_block(x, filters=8*channel_factor,
                 latent_vector=latent, noise=noise_in)
 
+    # 32x32
     x = g_block(x, filters=6*channel_factor,
                 latent_vector=latent, noise=noise_in)
 
+    # 64x64
     x = g_block(x, filters=4*channel_factor,
                 latent_vector=latent, noise=noise_in)
 
+    # 128x128
     x = g_block(x, filters=2*channel_factor,
                 latent_vector=latent, noise=noise_in)
 
+    # 256x256
     x = g_block(x, filters=channel_factor,
                 latent_vector=latent, noise=noise_in)
-    
+
+    # 512x512
     x = g_block(x, filters=channel_factor,
                 latent_vector=latent, noise=noise_in)
 
@@ -141,13 +156,9 @@ def build_generator(latent_dim, image_size=(128, 128)) -> keras.Model:
     return Model(inputs=[latent_in, noise_in], outputs=fake_out, name="Generator_for_square")
 
 
-def build_generator_for_nonsquare(latent_dim: int, image_size: tuple = (320, 192)) -> keras.Model:
+def build_generator_for_nonsquare(latent_dim: int, image_size: tuple = (320, 192), h_factor: int = 5, w_factor: int = 3) -> keras.Model:
     if image_size[0] == image_size[1]:
         raise "input shape cannot be 1:1"
-
-    filters_factor = 2
-    h_factor = 5
-    w_factor = 3
 
     f = [image_size[0]//2 **
          x for x in range(1, int(np.math.log2(image_size[0]//h_factor))+1)]
@@ -157,6 +168,10 @@ def build_generator_for_nonsquare(latent_dim: int, image_size: tuple = (320, 192
 
     # 6 Latent Mapping layers(mlp)
     latent = Dense(latent_dim)(latent_in)
+    latent = LeakyReLU(alpha=0.1)(latent)
+    latent = Dense(latent_dim)(latent)
+    latent = LeakyReLU(alpha=0.1)(latent)
+    latent = Dense(latent_dim)(latent)
     latent = LeakyReLU(alpha=0.1)(latent)
     latent = Dense(latent_dim)(latent)
     latent = LeakyReLU(alpha=0.1)(latent)
@@ -193,7 +208,7 @@ def build_generator_for_nonsquare(latent_dim: int, image_size: tuple = (320, 192
 
     x = g_block(x, filters=channel_factor,
                 latent_vector=latent, noise=noise_in)
-    
+
     x = g_block(x, filters=channel_factor,
                 latent_vector=latent, noise=noise_in)
 
